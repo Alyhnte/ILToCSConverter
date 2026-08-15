@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>ILToCS</AssemblyName>
+    <RootNamespace>ILToCSConverter.Cli</RootNamespace>
+    <DebugType>embedded</DebugType>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>il2cs</ToolCommandName>
+    <PackageId>il2cs</PackageId>
+    <IsPackable>true</IsPackable>
+    <PackageDescription>IL, DLL ve EXE dosyalarını C# projesine çevirir; Düzün ile DLL'yi IL'ye ayırır.</PackageDescription>
+    <PackageTags>ilspy;decompiler;ildasm;ilasm;csharp</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ILToCSConverter.Core\ILToCSConverter.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.CommandLine" Version="2.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>

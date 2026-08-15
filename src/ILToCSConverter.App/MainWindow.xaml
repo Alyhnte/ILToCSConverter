@@ -1,0 +1,329 @@
+<Window x:Class="ILToCSConverter.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="{Binding Title}"
+        Height="820" Width="1100"
+        MinHeight="680" MinWidth="920"
+        Background="{DynamicResource Bg}"
+        FontFamily="Segoe UI"
+        AllowDrop="True"
+        DragOver="OnDragOver"
+        Drop="OnDrop">
+
+    <DockPanel Margin="16">
+        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+            <Button DockPanel.Dock="Right" Style="{StaticResource GhostButton}" Content="Koyu tema"
+                    Command="{Binding ToggleThemeCommand}" />
+            <StackPanel>
+                <TextBlock Text="{Binding Title}" FontSize="22" FontWeight="SemiBold" />
+                <TextBlock Style="{StaticResource Hint}"
+                           Text="C#'a çevir, Düzün (DLL → IL) veya kendi .snk anahtarınızla IL → DLL. Sürükle-bırak desteklenir." />
+            </StackPanel>
+        </DockPanel>
+
+        <TextBlock DockPanel.Dock="Bottom" Text="{Binding CpuInfo}" Style="{StaticResource Hint}" Margin="0,10,0,0" />
+
+        <TabControl SelectedIndex="{Binding SelectedTabIndex}" Background="Transparent" BorderThickness="0">
+            <TabItem Header="C#'a çevir">
+                <Grid Margin="0,12,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Border Background="{DynamicResource Card}" CornerRadius="10" Padding="16" BorderBrush="{DynamicResource Line}" BorderThickness="1" Margin="0,0,0,12">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Style="{StaticResource Label}" Text="Kaynak" />
+                            <Grid Grid.Row="1" Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <ComboBox IsEditable="True" ItemsSource="{Binding RecentInputs}"
+                                          Text="{Binding InputPath, UpdateSourceTrigger=PropertyChanged}"
+                                          IsEnabled="{Binding IsRunning, Converter={StaticResource InverseBool}}" />
+                                <Button Grid.Column="1" Style="{StaticResource GhostButton}" Content="Klasör" Margin="8,0,0,0" Command="{Binding BrowseInputCommand}" />
+                                <Button Grid.Column="2" Style="{StaticResource GhostButton}" Content="Dosya" Margin="8,0,0,0" Command="{Binding BrowseInputFileCommand}" />
+                            </Grid>
+                            <TextBlock Grid.Row="2" Style="{StaticResource Label}" Text="Hedef" />
+                            <Grid Grid.Row="3">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <ComboBox IsEditable="True" ItemsSource="{Binding RecentOutputs}"
+                                          Text="{Binding OutputPath, UpdateSourceTrigger=PropertyChanged}"
+                                          IsEnabled="{Binding IsRunning, Converter={StaticResource InverseBool}}" />
+                                <Button Grid.Column="1" Style="{StaticResource GhostButton}" Content="Klasör" Margin="8,0,0,0" Command="{Binding BrowseOutputCommand}" />
+                            </Grid>
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Row="1" Background="{DynamicResource Card}" CornerRadius="10" Padding="16" BorderBrush="{DynamicResource Line}" BorderThickness="1" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource Label}" Text="Seçenekler" />
+                            <WrapPanel>
+                                <CheckBox Content="Alt klasörler" IsChecked="{Binding Recursive}" />
+                                <CheckBox Content="Derlemeyi doğrula" IsChecked="{Binding VerifyBuild}" />
+                                <CheckBox Content="Format" IsChecked="{Binding FormatOutput}" />
+                                <CheckBox Content="Global isim alanı" IsChecked="{Binding IncludeGlobalNamespace}" />
+                                <CheckBox Content="Derleyici tipleri" IsChecked="{Binding IncludeCompilerGenerated}" />
+                                <CheckBox Content="Çözüm (.sln)" IsChecked="{Binding GenerateSolution}" />
+                                <CheckBox Content="BAML → XAML" IsChecked="{Binding DecompileBaml}" />
+                                <CheckBox Content="PDB satırları" IsChecked="{Binding UsePdb}" />
+                            </WrapPanel>
+                            <Grid Margin="0,8,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="200" />
+                                    <ColumnDefinition Width="16" />
+                                    <ColumnDefinition Width="160" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource Label}" Text="C# sürümü" />
+                                    <ComboBox ItemsSource="{Binding LanguageChoices}" SelectedItem="{Binding LanguageVersion}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Style="{StaticResource Label}" Text="Paralellik (0 = CPU)" />
+                                    <TextBox Text="{Binding Parallelism, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <Grid Grid.Row="2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1.2*" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <Border Background="{DynamicResource Card}" CornerRadius="10" Padding="16" BorderBrush="{DynamicResource Line}" BorderThickness="1">
+                            <DockPanel>
+                                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+                                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                                        <Button Style="{StaticResource PrimaryButton}" Content="Başlat" Command="{Binding StartCommand}" />
+                                        <Button Style="{StaticResource GhostButton}" Content="{Binding PauseLabel}" Margin="8,0,0,0" Command="{Binding PauseCommand}" />
+                                        <Button Style="{StaticResource DangerButton}" Content="İptal" Margin="8,0,0,0" Command="{Binding CancelCommand}" />
+                                        <Button Style="{StaticResource GhostButton}" Content="Çıktıyı aç" Margin="8,0,0,0" Command="{Binding OpenOutputCommand}" />
+                                    </StackPanel>
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding StatusText}" FontWeight="SemiBold" />
+                                        <ProgressBar Height="8" Margin="0,8,16,0" Minimum="0" Maximum="{Binding ProgressMaximum}" Value="{Binding ProgressValue}" />
+                                    </StackPanel>
+                                </DockPanel>
+                                <TextBlock DockPanel.Dock="Top" Style="{StaticResource Label}" Text="Günlük" />
+                                <ListBox x:Name="LogList" ItemsSource="{Binding Logs}" BorderThickness="0"
+                                         Background="{DynamicResource LogBg}" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="0,2">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="64" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="{Binding Time}" Foreground="{DynamicResource Muted}" FontSize="12" />
+                                                <TextBlock Grid.Column="1" Text="{Binding Message}" TextWrapping="Wrap"
+                                                           Foreground="{Binding Level, Converter={StaticResource LevelBrush}}" FontSize="13" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </DockPanel>
+                        </Border>
+
+                        <Border Grid.Column="2" Background="{DynamicResource Card}" CornerRadius="10" Padding="16" BorderBrush="{DynamicResource Line}" BorderThickness="1">
+                            <DockPanel>
+                                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                                    <Button DockPanel.Dock="Right" Style="{StaticResource GhostButton}" Content="Tipleri yükle" Command="{Binding LoadPreviewCommand}" />
+                                    <TextBlock Style="{StaticResource Label}" Text="Önizleme" VerticalAlignment="Center" />
+                                </DockPanel>
+                                <ListBox DockPanel.Dock="Left" Width="200" Margin="0,0,8,0"
+                                         ItemsSource="{Binding PreviewTypes}"
+                                         SelectedItem="{Binding SelectedPreviewType}"
+                                         DisplayMemberPath="FullName"
+                                         Background="{DynamicResource LogBg}" BorderThickness="0" />
+                                <TextBox Text="{Binding PreviewCode, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap"
+                                         AcceptsReturn="True" VerticalScrollBarVisibility="Auto"
+                                         FontFamily="Cascadia Code, Consolas" FontSize="12"
+                                         Background="{DynamicResource CodeBg}" Foreground="#E2E8F0"
+                                         BorderThickness="0" />
+                            </DockPanel>
+                        </Border>
+                    </Grid>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="Düzün">
+                <Grid Margin="0,12,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Border Background="{DynamicResource Card}" CornerRadius="10" Padding="16" BorderBrush="{DynamicResource Line}" BorderThickness="1" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource Label}" Text="Düzün — DLL / EXE → IL" />
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="ildasm ile assembly'yi UTF-8 IL metnine ayırır. Her DLL için SHA256 hesaplanır; .il başlığına, .sha256 dosyasına ve checksums.sha256 listesine yazılır. Hedef boşsa _IL_Outputs klasörü açılır." />
+                            <TextBlock Style="{StaticResource Label}" Text="Kaynak" Margin="0,12,0,6" />
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <ComboBox IsEditable="True" ItemsSource="{Binding RecentDuzunInputs}"
+                                          Text="{Binding DuzunInputPath, UpdateSourceTrigger=PropertyChanged}" />
+                                <Button Grid.Column="1" Style="{StaticResource GhostButton}" Content="Klasör" Margin="8,0,0,0" Command="{Binding BrowseDuzunInputCommand}" />
+                                <Button Grid.Column="2" Style="{StaticResource GhostButton}" Content="Dosya" Margin="8,0,0,0" Command="{Binding BrowseDuzunInputFileCommand}" />
+                            </Grid>
+                            <TextBlock Style="{StaticResource Label}" Text="Hedef (isteğe bağlı)" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <ComboBox IsEditable="True" ItemsSource="{Binding RecentDuzunOutputs}"
+                                          Text="{Binding DuzunOutputPath, UpdateSourceTrigger=PropertyChanged}" />
+                                <Button Grid.Column="1" Style="{StaticResource GhostButton}" Content="Klasör" Margin="8,0,0,0" Command="{Binding BrowseDuzunOutputCommand}" />
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Row="1" Background="{DynamicResource Card}" CornerRadius="10" Padding="16" BorderBrush="{DynamicResource Line}" BorderThickness="1">
+                        <DockPanel>
+                            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+                                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                                    <Button Style="{StaticResource PrimaryButton}" Content="Düzün" Command="{Binding StartDuzunCommand}" />
+                                    <Button Style="{StaticResource GhostButton}" Content="{Binding PauseLabel}" Margin="8,0,0,0" Command="{Binding PauseCommand}" />
+                                    <Button Style="{StaticResource DangerButton}" Content="İptal" Margin="8,0,0,0" Command="{Binding CancelCommand}" />
+                                    <Button Style="{StaticResource GhostButton}" Content="Çıktıyı aç" Margin="8,0,0,0" Command="{Binding OpenOutputCommand}" />
+                                </StackPanel>
+                                <StackPanel>
+                                    <TextBlock Text="{Binding StatusText}" FontWeight="SemiBold" />
+                                    <ProgressBar Height="8" Margin="0,8,16,0" Minimum="0" Maximum="{Binding ProgressMaximum}" Value="{Binding ProgressValue}" />
+                                </StackPanel>
+                            </DockPanel>
+                            <TextBlock DockPanel.Dock="Top" Style="{StaticResource Label}" Text="Günlük" />
+                            <ListBox x:Name="DuzunLogList" ItemsSource="{Binding DuzunLogs}" BorderThickness="0"
+                                     Background="{DynamicResource LogBg}" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,2">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="64" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="{Binding Time}" Foreground="{DynamicResource Muted}" FontSize="12" />
+                                            <TextBlock Grid.Column="1" Text="{Binding Message}" TextWrapping="Wrap"
+                                                       Foreground="{Binding Level, Converter={StaticResource LevelBrush}}" FontSize="13" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </DockPanel>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="IL → DLL">
+                <Grid Margin="0,12,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Border Background="{DynamicResource Card}" CornerRadius="10" Padding="16" BorderBrush="{DynamicResource Line}" BorderThickness="1" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource Label}" Text="IL → DLL — kendi anahtarınız" />
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="Kendi .il dosyanızı ilasm ile DLL'e derler. Kendi .snk dosyanızı seçin veya yeni üretin; IL içindeki publickey bu anahtara hizalanır ve /key= ile imzalanır. Başkasının yayıncı imzasını taklit etmek için kullanmayın." />
+                            <TextBlock Style="{StaticResource Label}" Text="Kaynak (.il)" Margin="0,12,0,6" />
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <ComboBox IsEditable="True" ItemsSource="{Binding RecentPackInputs}"
+                                          Text="{Binding PackInputPath, UpdateSourceTrigger=PropertyChanged}"
+                                          IsEnabled="{Binding IsRunning, Converter={StaticResource InverseBool}}" />
+                                <Button Grid.Column="1" Style="{StaticResource GhostButton}" Content="Klasör" Margin="8,0,0,0" Command="{Binding BrowsePackInputCommand}" />
+                                <Button Grid.Column="2" Style="{StaticResource GhostButton}" Content="Dosya" Margin="8,0,0,0" Command="{Binding BrowsePackInputFileCommand}" />
+                            </Grid>
+                            <TextBlock Style="{StaticResource Label}" Text="Hedef (DLL klasörü)" />
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <ComboBox IsEditable="True" ItemsSource="{Binding RecentPackOutputs}"
+                                          Text="{Binding PackOutputPath, UpdateSourceTrigger=PropertyChanged}"
+                                          IsEnabled="{Binding IsRunning, Converter={StaticResource InverseBool}}" />
+                                <Button Grid.Column="1" Style="{StaticResource GhostButton}" Content="Klasör" Margin="8,0,0,0" Command="{Binding BrowsePackOutputCommand}" />
+                            </Grid>
+                            <TextBlock Style="{StaticResource Label}" Text="Kendi .snk anahtarınız" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox Text="{Binding SnkPath, UpdateSourceTrigger=PropertyChanged}"
+                                         IsEnabled="{Binding IsRunning, Converter={StaticResource InverseBool}}" />
+                                <Button Grid.Column="1" Style="{StaticResource GhostButton}" Content="Seç" Margin="8,0,0,0" Command="{Binding BrowseSnkCommand}" />
+                                <Button Grid.Column="2" Style="{StaticResource GhostButton}" Content="Yeni anahtar üret" Margin="8,0,0,0" Command="{Binding GenerateSnkCommand}" />
+                            </Grid>
+                            <CheckBox Margin="0,10,0,0" Content="Anahtar yoksa hedef klasöre yeni signing.snk yaz"
+                                      IsChecked="{Binding GenerateSnkIfMissing}"
+                                      IsEnabled="{Binding IsRunning, Converter={StaticResource InverseBool}}" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Row="1" Background="{DynamicResource Card}" CornerRadius="10" Padding="16" BorderBrush="{DynamicResource Line}" BorderThickness="1">
+                        <DockPanel>
+                            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+                                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                                    <Button Style="{StaticResource PrimaryButton}" Content="Derle ve imzala" Command="{Binding StartPackCommand}" />
+                                    <Button Style="{StaticResource GhostButton}" Content="{Binding PauseLabel}" Margin="8,0,0,0" Command="{Binding PauseCommand}" />
+                                    <Button Style="{StaticResource DangerButton}" Content="İptal" Margin="8,0,0,0" Command="{Binding CancelCommand}" />
+                                    <Button Style="{StaticResource GhostButton}" Content="Çıktıyı aç" Margin="8,0,0,0" Command="{Binding OpenOutputCommand}" />
+                                </StackPanel>
+                                <StackPanel>
+                                    <TextBlock Text="{Binding StatusText}" FontWeight="SemiBold" />
+                                    <ProgressBar Height="8" Margin="0,8,16,0" Minimum="0" Maximum="{Binding ProgressMaximum}" Value="{Binding ProgressValue}" />
+                                </StackPanel>
+                            </DockPanel>
+                            <TextBlock DockPanel.Dock="Top" Style="{StaticResource Label}" Text="Günlük" />
+                            <ListBox x:Name="PackLogList" ItemsSource="{Binding PackLogs}" BorderThickness="0"
+                                     Background="{DynamicResource LogBg}" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,2">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="64" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="{Binding Time}" Foreground="{DynamicResource Muted}" FontSize="12" />
+                                            <TextBlock Grid.Column="1" Text="{Binding Message}" TextWrapping="Wrap"
+                                                       Foreground="{Binding Level, Converter={StaticResource LevelBrush}}" FontSize="13" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </DockPanel>
+                    </Border>
+                </Grid>
+            </TabItem>
+        </TabControl>
+    </DockPanel>
+</Window>

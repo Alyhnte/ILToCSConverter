@@ -1,0 +1,17 @@
+<Project>
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Version>1.2.0</Version>
+    <AssemblyVersion>1.2.0.0</AssemblyVersion>
+    <FileVersion>1.2.0.0</FileVersion>
+    <InformationalVersion>1.2.0</InformationalVersion>
+    <Company>Alyhnte</Company>
+    <Product>IL → C# Dönüştürücü</Product>
+    <Authors>Alyhnte</Authors>
+    <Copyright>Copyright © 2026 Alyhnte</Copyright>
+    <Description>IL, DLL ve EXE dosyalarını okunabilir C# projelerine çevirir.</Description>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+</Project>
