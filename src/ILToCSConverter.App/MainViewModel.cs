@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows;
+using ILToCSConverter.App.Localization;
 using ILToCSConverter.Core;
 using ILToCSConverter.Core.Conversion;
 using ILToCSConverter.Core.Decompile;
@@ -12,6 +13,7 @@ using ILToCSConverter.Core.Ildasm;
 using ILToCSConverter.Core.Packing;
 using ILToCSConverter.Core.Settings;
 using ILToCSConverter.Core.Signing;
+using ILToCSConverter.Core.Updates;
 using Microsoft.Win32;
 
 namespace ILToCSConverter.App;
@@ -28,6 +30,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private readonly AppSettings _settings;
     private readonly ConversionQueue _queue = new();
     private CancellationTokenSource? _cts;
+    private UpdateCheckResult? _lastUpdate;
     private string _inputPath = "";
     private string _outputPath = "";
     private string _duzunInputPath = "";
@@ -35,12 +38,18 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private string _packInputPath = "";
     private string _packOutputPath = "";
     private string _snkPath = "";
-    private bool _generateSnkIfMissing = true;
+    private string _tokenMap = "";
+    private string _uiLanguage = "tr";
+    private string _title = "";
+    private string _themeButtonLabel = "";
+    private string _packActionLabel = "";
+    private string _installedVersionText = "";
+    private string _updateStatus = "";
     private string _languageVersion = "CSharp12";
-    private string _statusText = "Hazır";
+    private string _statusText = "";
     private string _toolStatus = "";
-    private string _previewCode = "Bir assembly seçin, soldan tip seçerek C# önizleyin.";
-    private string _pauseLabel = "Duraklat";
+    private string _previewCode = "";
+    private string _pauseLabel = "";
     private bool _recursive = true;
     private bool _verifyBuild;
     private bool _formatOutput;
@@ -49,9 +58,14 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private bool _generateSolution = true;
     private bool _decompileBaml = true;
     private bool _usePdb = true;
+    private bool _generateSnkIfMissing = true;
+    private bool _stripSignature;
+    private bool _replaceAllExternTokens;
     private bool _isRunning;
     private bool _isPaused;
     private bool _isDarkTheme;
+    private bool _updateBusy;
+    private bool _autoCheckedUpdates;
     private int _selectedTabIndex;
     private int _parallelism;
     private int _progressValue;
@@ -69,6 +83,11 @@ public sealed class MainViewModel : INotifyPropertyChanged
         _packInputPath = _settings.LastPackInput ?? "";
         _packOutputPath = _settings.LastPackOutput ?? "";
         _snkPath = _settings.LastSnkPath ?? "";
+        _tokenMap = _settings.LastTokenMap ?? "";
+        _generateSnkIfMissing = _settings.GenerateSnkIfMissing;
+        _stripSignature = _settings.StripSignature;
+        _replaceAllExternTokens = _settings.ReplaceAllExternTokens;
+        _uiLanguage = _settings.UiLanguage is "en" or "ru" ? _settings.UiLanguage : "tr";
         _languageVersion = _settings.LanguageVersion;
         _recursive = _settings.Recursive;
         _verifyBuild = _settings.VerifyBuild;
@@ -88,8 +107,6 @@ public sealed class MainViewModel : INotifyPropertyChanged
         foreach (string path in _settings.RecentPackInputs) RecentPackInputs.Add(path);
         foreach (string path in _settings.RecentPackOutputs) RecentPackOutputs.Add(path);
 
-        RefreshToolStatus();
-
         BrowseInputCommand = new RelayCommand(BrowseInput, () => !IsRunning);
         BrowseInputFileCommand = new RelayCommand(BrowseInputFile, () => !IsRunning);
         BrowseOutputCommand = new RelayCommand(BrowseOutput, () => !IsRunning);
@@ -99,8 +116,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
         BrowsePackInputCommand = new RelayCommand(BrowsePackInput, () => !IsRunning);
         BrowsePackInputFileCommand = new RelayCommand(BrowsePackInputFile, () => !IsRunning);
         BrowsePackOutputCommand = new RelayCommand(BrowsePackOutput, () => !IsRunning);
-        BrowseSnkCommand = new RelayCommand(BrowseSnk, () => !IsRunning);
-        GenerateSnkCommand = new RelayCommand(GenerateSnk, () => !IsRunning);
+        BrowseSnkCommand = new RelayCommand(BrowseSnk, () => !IsRunning && PackSigningEnabled);
+        GenerateSnkCommand = new RelayCommand(GenerateSnk, () => !IsRunning && PackSigningEnabled);
         StartCommand = new RelayCommand(StartAsync, () => !IsRunning);
         StartDuzunCommand = new RelayCommand(StartDuzunAsync, () => !IsRunning);
         StartPackCommand = new RelayCommand(StartPackAsync, () => !IsRunning);
@@ -109,9 +126,18 @@ public sealed class MainViewModel : INotifyPropertyChanged
         OpenOutputCommand = new RelayCommand(OpenOutput, () => !string.IsNullOrWhiteSpace(_lastOutputFolder));
         ToggleThemeCommand = new RelayCommand(() => IsDarkTheme = !IsDarkTheme);
         LoadPreviewCommand = new RelayCommand(LoadPreviewTypes, () => !IsRunning);
+        CheckUpdatesCommand = new RelayCommand(CheckUpdatesAsync, () => !UpdateBusy);
+        OpenGitHubProfileCommand = new RelayCommand(() => OpenUrl(ProductInfo.GitHubProfileUrl));
+        OpenGitHubRepoCommand = new RelayCommand(() => OpenUrl(ProductInfo.GitHubRepoUrl));
+        OpenReleasesCommand = new RelayCommand(() => OpenUrl(ProductInfo.GitHubReleasesUrl));
+
+        ApplyLanguage();
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
+
+    public UiText Ui { get; } = new();
+    public IReadOnlyList<LanguageOption> UiLanguages => UiCatalog.Languages;
 
     public ObservableCollection<string> RecentInputs { get; } = [];
     public ObservableCollection<string> RecentOutputs { get; } = [];
@@ -125,16 +151,50 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public ObservableCollection<TypePreviewItem> PreviewTypes { get; } = [];
     public IReadOnlyList<string> LanguageChoices { get; } = LanguageVersionMapper.Choices;
 
-    public string Title => $"{ProductInfo.Name}  {ProductInfo.Version}";
+    public string Title { get => _title; private set => SetField(ref _title, value); }
+    public string ThemeButtonLabel { get => _themeButtonLabel; private set => SetField(ref _themeButtonLabel, value); }
+    public string PackActionLabel { get => _packActionLabel; private set => SetField(ref _packActionLabel, value); }
+    public string InstalledVersionText { get => _installedVersionText; private set => SetField(ref _installedVersionText, value); }
     public string CpuInfo => $"CPU: {Environment.ProcessorCount}  |  {_toolStatus}";
+    public bool PackSigningEnabled => !StripSignature && !IsRunning;
+
+    public string GitHubUser => ProductInfo.GitHubUser;
+    public string GitHubProfileUrl => ProductInfo.GitHubProfileUrl;
+    public string GitHubRepoUrl => ProductInfo.GitHubRepoUrl;
+    public string GitHubAvatarUrl => ProductInfo.GitHubAvatarUrl;
+
+    public string UiLanguage
+    {
+        get => _uiLanguage;
+        set
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return;
+            string code = value is "en" or "ru" ? value : "tr";
+            if (SetField(ref _uiLanguage, code))
+            {
+                ApplyLanguage();
+                _settings.UiLanguage = code;
+                SettingsStore.Save(_settings);
+            }
+        }
+    }
 
     public int SelectedTabIndex
     {
         get => _selectedTabIndex;
         set
         {
-            if (SetField(ref _selectedTabIndex, value))
-                RefreshToolStatus();
+            if (!SetField(ref _selectedTabIndex, value))
+                return;
+
+            RefreshToolStatus();
+            if (value == 3 && !_autoCheckedUpdates)
+            {
+                _autoCheckedUpdates = true;
+                if (CheckUpdatesCommand.CanExecute(null))
+                    CheckUpdatesCommand.Execute(null);
+            }
         }
     }
 
@@ -145,7 +205,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public string PackInputPath { get => _packInputPath; set => SetField(ref _packInputPath, value); }
     public string PackOutputPath { get => _packOutputPath; set => SetField(ref _packOutputPath, value); }
     public string SnkPath { get => _snkPath; set => SetField(ref _snkPath, value); }
+    public string TokenMap { get => _tokenMap; set => SetField(ref _tokenMap, value); }
     public bool GenerateSnkIfMissing { get => _generateSnkIfMissing; set => SetField(ref _generateSnkIfMissing, value); }
+    public bool ReplaceAllExternTokens { get => _replaceAllExternTokens; set => SetField(ref _replaceAllExternTokens, value); }
     public string LanguageVersion { get => _languageVersion; set => SetField(ref _languageVersion, value); }
     public bool Recursive { get => _recursive; set => SetField(ref _recursive, value); }
     public bool VerifyBuild { get => _verifyBuild; set => SetField(ref _verifyBuild, value); }
@@ -159,6 +221,22 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public string StatusText { get => _statusText; set => SetField(ref _statusText, value); }
     public string PreviewCode { get => _previewCode; set => SetField(ref _previewCode, value); }
     public string PauseLabel { get => _pauseLabel; set => SetField(ref _pauseLabel, value); }
+    public string UpdateStatus { get => _updateStatus; private set => SetField(ref _updateStatus, value); }
+
+    public bool StripSignature
+    {
+        get => _stripSignature;
+        set
+        {
+            if (SetField(ref _stripSignature, value))
+            {
+                OnPropertyChanged(nameof(PackSigningEnabled));
+                RefreshPackActionLabel();
+                BrowseSnkCommand.RaiseCanExecuteChanged();
+                GenerateSnkCommand.RaiseCanExecuteChanged();
+            }
+        }
+    }
 
     public bool IsDarkTheme
     {
@@ -170,6 +248,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
                 ThemeManager.Apply(value);
                 _settings.DarkTheme = value;
                 SettingsStore.Save(_settings);
+                RefreshThemeButtonLabel();
             }
         }
     }
@@ -180,7 +259,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         set
         {
             if (SetField(ref _isPaused, value))
-                PauseLabel = value ? "Devam" : "Duraklat";
+                PauseLabel = value ? Ui["Resume"] : Ui["Pause"];
         }
     }
 
@@ -191,6 +270,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         {
             if (SetField(ref _isRunning, value))
             {
+                OnPropertyChanged(nameof(PackSigningEnabled));
                 StartCommand.RaiseCanExecuteChanged();
                 StartDuzunCommand.RaiseCanExecuteChanged();
                 StartPackCommand.RaiseCanExecuteChanged();
@@ -209,6 +289,16 @@ public sealed class MainViewModel : INotifyPropertyChanged
                 GenerateSnkCommand.RaiseCanExecuteChanged();
                 LoadPreviewCommand.RaiseCanExecuteChanged();
             }
+        }
+    }
+
+    public bool UpdateBusy
+    {
+        get => _updateBusy;
+        private set
+        {
+            if (SetField(ref _updateBusy, value))
+                CheckUpdatesCommand.RaiseCanExecuteChanged();
         }
     }
 
@@ -244,11 +334,18 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public RelayCommand OpenOutputCommand { get; }
     public RelayCommand ToggleThemeCommand { get; }
     public RelayCommand LoadPreviewCommand { get; }
+    public RelayCommand CheckUpdatesCommand { get; }
+    public RelayCommand OpenGitHubProfileCommand { get; }
+    public RelayCommand OpenGitHubRepoCommand { get; }
+    public RelayCommand OpenReleasesCommand { get; }
 
     public void ApplyInitialTheme() => ThemeManager.Apply(IsDarkTheme);
 
     public void UseDroppedPath(string path, bool asOutput)
     {
+        if (SelectedTabIndex == 3)
+            return;
+
         if (SelectedTabIndex == 1)
         {
             if (asOutput)
@@ -273,44 +370,92 @@ public sealed class MainViewModel : INotifyPropertyChanged
             InputPath = path;
     }
 
+    private void ApplyLanguage()
+    {
+        UiCatalog.SetLanguage(_uiLanguage);
+        Ui.Refresh();
+        Title = $"{Ui["ProductName"]}  {ProductInfo.Version}";
+        InstalledVersionText = UiCatalog.Format("CurrentVersion", ProductInfo.Version);
+        RefreshThemeButtonLabel();
+        RefreshPackActionLabel();
+        StatusText = Ui["Ready"];
+        PauseLabel = IsPaused ? Ui["Resume"] : Ui["Pause"];
+        if (PreviewTypes.Count == 0)
+            PreviewCode = Ui["PreviewPlaceholder"];
+        RefreshUpdateStatusText();
+        RefreshToolStatus();
+    }
+
+    private void RefreshThemeButtonLabel() =>
+        ThemeButtonLabel = IsDarkTheme ? Ui["ThemeToLight"] : Ui["ThemeToDark"];
+
+    private void RefreshPackActionLabel() =>
+        PackActionLabel = StripSignature ? Ui["PackUnsigned"] : Ui["PackSign"];
+
+    private void RefreshUpdateStatusText()
+    {
+        if (UpdateBusy)
+        {
+            UpdateStatus = Ui["UpdateChecking"];
+            return;
+        }
+
+        if (_lastUpdate is null)
+        {
+            UpdateStatus = Ui["UpdateIdle"];
+            return;
+        }
+
+        if (!_lastUpdate.Success)
+            UpdateStatus = UiCatalog.Format("UpdateFailed", _lastUpdate.Error ?? "");
+        else if (_lastUpdate.UpdateAvailable)
+            UpdateStatus = UiCatalog.Format("UpdateAvailable", _lastUpdate.LatestVersion ?? "");
+        else if (string.IsNullOrWhiteSpace(_lastUpdate.LatestVersion))
+            UpdateStatus = Ui["UpdateNone"];
+        else
+            UpdateStatus = UiCatalog.Format("UpdateLatest", _lastUpdate.LatestVersion);
+    }
+
     private void RefreshToolStatus()
     {
         if (SelectedTabIndex == 1)
         {
             string? ildasm = IldasmLocator.Find(_settings.IldasmPath);
-            _toolStatus = ildasm is null ? "ildasm.exe bulunamadı — Windows SDK / NETFX Tools gerekli" : $"ildasm: {ildasm}";
+            _toolStatus = ildasm is null ? Ui["IldasmMissing"] : $"ildasm: {ildasm}";
+        }
+        else if (SelectedTabIndex == 3)
+        {
+            _toolStatus = $"{GitHubUser}  |  {ProductInfo.Version}";
         }
         else
         {
             string? ilasm = IlasmLocator.Find(_settings.IlasmPath);
             _toolStatus = ilasm is null
-                ? (SelectedTabIndex == 2
-                    ? "ilasm.exe bulunamadı — IL → DLL için Windows SDK / NETFX Tools gerekli"
-                    : "ilasm.exe bulunamadı — yalnızca DLL/EXE dönüştürülebilir")
+                ? (SelectedTabIndex == 2 ? Ui["IlasmMissingPack"] : Ui["IlasmMissingConvert"])
                 : $"ilasm: {ilasm}";
         }
 
         OnPropertyChanged(nameof(CpuInfo));
     }
 
-    private void BrowseInput() => PickFolder("Kaynak klasörü seçin", v => InputPath = v);
-    private void BrowseOutput() => PickFolder("Hedef klasörü seçin", v => OutputPath = v);
-    private void BrowseDuzunOutput() => PickFolder("IL çıktı klasörü", v => DuzunOutputPath = v);
-    private void BrowseDuzunInput() => PickFolder("Kaynak klasörü seçin", v => DuzunInputPath = v);
-    private void BrowsePackInput() => PickFolder("Kaynak klasörü seçin", v => PackInputPath = v);
-    private void BrowsePackOutput() => PickFolder("DLL çıktı klasörü", v => PackOutputPath = v);
+    private void BrowseInput() => PickFolder(Ui["BrowseSourceFolder"], v => InputPath = v);
+    private void BrowseOutput() => PickFolder(Ui["BrowseTargetFolder"], v => OutputPath = v);
+    private void BrowseDuzunOutput() => PickFolder(Ui["BrowseIlOutput"], v => DuzunOutputPath = v);
+    private void BrowseDuzunInput() => PickFolder(Ui["BrowseSourceFolder"], v => DuzunInputPath = v);
+    private void BrowsePackInput() => PickFolder(Ui["BrowseSourceFolder"], v => PackInputPath = v);
+    private void BrowsePackOutput() => PickFolder(Ui["BrowseDllOutput"], v => PackOutputPath = v);
 
-    private void BrowseInputFile() => PickFile("Dönüştürülebilir|*.il;*.dll;*.exe;*.netmodule|Tüm dosyalar|*.*", v => InputPath = v);
-    private void BrowseDuzunInputFile() => PickFile("Assembly|*.dll;*.exe;*.netmodule|Tüm dosyalar|*.*", v => DuzunInputPath = v);
-    private void BrowsePackInputFile() => PickFile("IL dosyası|*.il|Tüm dosyalar|*.*", v => PackInputPath = v);
-    private void BrowseSnk() => PickFile("Strong name anahtarı|*.snk|Tüm dosyalar|*.*", v => SnkPath = v);
+    private void BrowseInputFile() => PickFile(Ui["FilterConvert"], v => InputPath = v);
+    private void BrowseDuzunInputFile() => PickFile(Ui["FilterAssembly"], v => DuzunInputPath = v);
+    private void BrowsePackInputFile() => PickFile(Ui["FilterIl"], v => PackInputPath = v);
+    private void BrowseSnk() => PickFile(Ui["FilterSnk"], v => SnkPath = v);
 
     private void GenerateSnk()
     {
         var dialog = new SaveFileDialog
         {
-            Title = "Yeni .snk kaydet",
-            Filter = "Strong name anahtarı|*.snk",
+            Title = Ui["SaveSnkTitle"],
+            Filter = Ui["FilterSnk"],
             FileName = string.IsNullOrWhiteSpace(SnkPath) ? "signing.snk" : System.IO.Path.GetFileName(SnkPath),
             DefaultExt = ".snk",
             OverwritePrompt = true
@@ -322,12 +467,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
         {
             var key = StrongNameKey.Create(dialog.FileName);
             SnkPath = key.SnkPath;
-            AddLog(PackLogs, "success", $"Yeni anahtar yazıldı: {key.SnkPath}  (token {key.Token})");
+            AddLog(PackLogs, "success", UiCatalog.Format("KeyCreated", key.SnkPath, key.Token));
         }
         catch (Exception ex)
         {
             AddLog(PackLogs, "error", ex.Message);
-            MessageBox.Show(ex.Message, ProductInfo.Name, MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(ex.Message, Ui["ProductName"], MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -338,9 +483,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
             apply(dialog.FolderName);
     }
 
-    private static void PickFile(string filter, Action<string> apply)
+    private void PickFile(string filter, Action<string> apply)
     {
-        var dialog = new OpenFileDialog { Title = "Dosya seçin", Filter = filter };
+        var dialog = new OpenFileDialog { Title = Ui["PickFile"], Filter = filter };
         if (dialog.ShowDialog() == true)
             apply(dialog.FileName);
     }
@@ -353,13 +498,13 @@ public sealed class MainViewModel : INotifyPropertyChanged
         {
             _queue.Resume();
             IsPaused = false;
-            StatusText = "Devam ediyor…";
+            StatusText = Ui["Resuming"];
         }
         else
         {
             _queue.Pause();
             IsPaused = true;
-            StatusText = "Duraklatıldı";
+            StatusText = Ui["Paused"];
         }
     }
 
@@ -370,11 +515,49 @@ public sealed class MainViewModel : INotifyPropertyChanged
         Process.Start(new ProcessStartInfo { FileName = "explorer.exe", Arguments = $"\"{_lastOutputFolder}\"", UseShellExecute = true });
     }
 
+    private static void OpenUrl(string url)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo { FileName = url, UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(ex.Message, UiCatalog.Get("ProductName"), MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private async Task CheckUpdatesAsync()
+    {
+        UpdateBusy = true;
+        UpdateStatus = Ui["UpdateChecking"];
+        try
+        {
+            _lastUpdate = await UpdateChecker.CheckAsync();
+        }
+        catch (Exception ex)
+        {
+            _lastUpdate = new UpdateCheckResult(
+                Success: false,
+                UpdateAvailable: false,
+                CurrentVersion: ProductInfo.Version,
+                LatestVersion: null,
+                ReleaseUrl: ProductInfo.GitHubReleasesUrl,
+                ReleaseName: null,
+                Error: ex.Message);
+        }
+        finally
+        {
+            UpdateBusy = false;
+            RefreshUpdateStatusText();
+        }
+    }
+
     private async Task StartAsync()
     {
         if (string.IsNullOrWhiteSpace(InputPath) || string.IsNullOrWhiteSpace(OutputPath))
         {
-            AddLog(Logs, "warn", "Kaynak ve hedef yollarını girin.");
+            AddLog(Logs, "warn", Ui["NeedConvertPaths"]);
             return;
         }
 
@@ -402,7 +585,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     {
         if (string.IsNullOrWhiteSpace(DuzunInputPath))
         {
-            AddLog(DuzunLogs, "warn", "Kaynak DLL/EXE yolunu girin.");
+            AddLog(DuzunLogs, "warn", Ui["NeedDuzunInput"]);
             return;
         }
 
@@ -422,7 +605,19 @@ public sealed class MainViewModel : INotifyPropertyChanged
     {
         if (string.IsNullOrWhiteSpace(PackInputPath) || string.IsNullOrWhiteSpace(PackOutputPath))
         {
-            AddLog(PackLogs, "warn", "Kaynak IL ve hedef klasör yollarını girin.");
+            AddLog(PackLogs, "warn", Ui["NeedPackPaths"]);
+            return;
+        }
+
+        Dictionary<string, string>? tokenMap;
+        try
+        {
+            tokenMap = TokenMapParser.Parse(TokenMap);
+        }
+        catch (FormatException ex)
+        {
+            AddLog(PackLogs, "error", ex.Message);
+            MessageBox.Show(ex.Message, Ui["ProductName"], MessageBoxButton.OK, MessageBoxImage.Error);
             return;
         }
 
@@ -434,7 +629,10 @@ public sealed class MainViewModel : INotifyPropertyChanged
             MaxParallelism = Parallelism,
             IlasmPath = _settings.IlasmPath,
             SnkPath = string.IsNullOrWhiteSpace(SnkPath) ? null : SnkPath.Trim(),
-            GenerateSnkIfMissing = GenerateSnkIfMissing
+            GenerateSnkIfMissing = GenerateSnkIfMissing,
+            StripSignature = StripSignature,
+            ReplaceAllExternTokens = ReplaceAllExternTokens,
+            TokenMap = tokenMap
         };
 
         await RunJobAsync(PackLogs, token => new PackEngine().Pack(options, UiProgress(), UiLogger(PackLogs), token, _queue), PathMemory.Pack);
@@ -451,7 +649,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         log.Clear();
         ProgressValue = 0;
         ProgressMaximum = 1;
-        StatusText = "Çalışıyor…";
+        StatusText = Ui["Running"];
         _cts = new CancellationTokenSource();
 
         try
@@ -467,19 +665,19 @@ public sealed class MainViewModel : INotifyPropertyChanged
                     SnkPath = generated;
             }
             OpenOutputCommand.RaiseCanExecuteChanged();
-            StatusText = $"Bitti: {result.Succeeded} başarılı, {result.Failed} hatalı";
+            StatusText = UiCatalog.Format("Done", result.Succeeded, result.Failed);
             RememberPaths(memory);
         }
         catch (OperationCanceledException)
         {
-            StatusText = "İptal edildi";
-            AddLog(log, "warn", "İşlem durduruldu.");
+            StatusText = Ui["Cancelled"];
+            AddLog(log, "warn", Ui["Stopped"]);
         }
         catch (Exception ex)
         {
-            StatusText = "Hata";
+            StatusText = Ui["Error"];
             AddLog(log, "error", ex.Message);
-            MessageBox.Show(ex.Message, ProductInfo.Name, MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(ex.Message, Ui["ProductName"], MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
         {
@@ -507,7 +705,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         string path = InputPath.Trim();
         if (!File.Exists(path) || !FileDiscovery.IsSupported(path, DisassembleEngine.AssemblyExtensions))
         {
-            AddLog(Logs, "warn", "Önizleme için bir DLL/EXE seçin.");
+            AddLog(Logs, "warn", Ui["PreviewNeedDll"]);
             return;
         }
 
@@ -517,8 +715,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
             foreach (var type in TypePreviewService.ListTypes(path))
                 PreviewTypes.Add(type);
             PreviewCode = PreviewTypes.Count == 0
-                ? "Tip bulunamadı."
-                : $"{PreviewTypes.Count} tip yüklendi. Soldan birini seçin.";
+                ? Ui["NoTypes"]
+                : UiCatalog.Format("TypesLoaded", PreviewTypes.Count);
         }
         catch (Exception ex)
         {
@@ -561,6 +759,11 @@ public sealed class MainViewModel : INotifyPropertyChanged
         _settings.UsePdb = UsePdb;
         _settings.MaxParallelism = Parallelism;
         _settings.DarkTheme = IsDarkTheme;
+        _settings.UiLanguage = UiLanguage;
+        _settings.LastTokenMap = string.IsNullOrWhiteSpace(TokenMap) ? null : TokenMap;
+        _settings.GenerateSnkIfMissing = GenerateSnkIfMissing;
+        _settings.StripSignature = StripSignature;
+        _settings.ReplaceAllExternTokens = ReplaceAllExternTokens;
 
         if (memory == PathMemory.CSharp)
         {
