@@ -20,6 +20,7 @@ public sealed class AppSettings
     public bool DecompileBaml { get; set; } = true;
     public bool UsePdb { get; set; } = true;
     public bool DarkTheme { get; set; }
+    public string UiLanguage { get; set; } = "tr";
     public string CollisionStrategy { get; set; } = nameof(Conversion.CollisionStrategy.SubfolderThenHash);
     public List<string> RecentInputs { get; set; } = [];
     public List<string> RecentOutputs { get; set; } = [];
@@ -30,8 +31,12 @@ public sealed class AppSettings
     public string? LastDuzunInput { get; set; }
     public string? LastDuzunOutput { get; set; }
     public string? LastSnkPath { get; set; }
+    public string? LastTokenMap { get; set; }
     public string? LastPackInput { get; set; }
     public string? LastPackOutput { get; set; }
+    public bool GenerateSnkIfMissing { get; set; } = true;
+    public bool StripSignature { get; set; }
+    public bool ReplaceAllExternTokens { get; set; }
     public List<string> RecentPackInputs { get; set; } = [];
     public List<string> RecentPackOutputs { get; set; } = [];
 
@@ -124,6 +129,8 @@ public static class SettingsStore
             target.DecompileBaml = loaded.DecompileBaml;
             target.UsePdb = loaded.UsePdb;
             target.DarkTheme = loaded.DarkTheme;
+            if (!string.IsNullOrWhiteSpace(loaded.UiLanguage))
+                target.UiLanguage = loaded.UiLanguage;
             if (!string.IsNullOrWhiteSpace(loaded.CollisionStrategy))
                 target.CollisionStrategy = loaded.CollisionStrategy;
             if (loaded.RecentInputs.Count > 0)
@@ -144,10 +151,15 @@ public static class SettingsStore
                 target.LastDuzunOutput = loaded.LastDuzunOutput;
             if (!string.IsNullOrWhiteSpace(loaded.LastSnkPath))
                 target.LastSnkPath = loaded.LastSnkPath;
+            if (!string.IsNullOrWhiteSpace(loaded.LastTokenMap))
+                target.LastTokenMap = loaded.LastTokenMap;
             if (!string.IsNullOrWhiteSpace(loaded.LastPackInput))
                 target.LastPackInput = loaded.LastPackInput;
             if (!string.IsNullOrWhiteSpace(loaded.LastPackOutput))
                 target.LastPackOutput = loaded.LastPackOutput;
+            target.GenerateSnkIfMissing = loaded.GenerateSnkIfMissing;
+            target.StripSignature = loaded.StripSignature;
+            target.ReplaceAllExternTokens = loaded.ReplaceAllExternTokens;
             if (loaded.RecentPackInputs.Count > 0)
                 target.RecentPackInputs = loaded.RecentPackInputs;
             if (loaded.RecentPackOutputs.Count > 0)

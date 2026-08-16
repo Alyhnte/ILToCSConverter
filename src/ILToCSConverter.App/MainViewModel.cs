@@ -129,7 +129,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         CheckUpdatesCommand = new RelayCommand(CheckUpdatesAsync, () => !UpdateBusy);
         OpenGitHubProfileCommand = new RelayCommand(() => OpenUrl(ProductInfo.GitHubProfileUrl));
         OpenGitHubRepoCommand = new RelayCommand(() => OpenUrl(ProductInfo.GitHubRepoUrl));
-        OpenReleasesCommand = new RelayCommand(() => OpenUrl(ProductInfo.GitHubReleasesUrl));
+        OpenReleasesCommand = new RelayCommand(() => OpenUrl(_lastUpdate?.ReleaseUrl ?? ProductInfo.GitHubReleasesUrl));
 
         ApplyLanguage();
     }
@@ -628,11 +628,11 @@ public sealed class MainViewModel : INotifyPropertyChanged
             Recursive = Recursive,
             MaxParallelism = Parallelism,
             IlasmPath = _settings.IlasmPath,
-            SnkPath = string.IsNullOrWhiteSpace(SnkPath) ? null : SnkPath.Trim(),
-            GenerateSnkIfMissing = GenerateSnkIfMissing,
+            SnkPath = StripSignature || string.IsNullOrWhiteSpace(SnkPath) ? null : SnkPath.Trim(),
+            GenerateSnkIfMissing = !StripSignature && GenerateSnkIfMissing,
             StripSignature = StripSignature,
-            ReplaceAllExternTokens = ReplaceAllExternTokens,
-            TokenMap = tokenMap
+            ReplaceAllExternTokens = !StripSignature && ReplaceAllExternTokens,
+            TokenMap = StripSignature ? null : tokenMap
         };
 
         await RunJobAsync(PackLogs, token => new PackEngine().Pack(options, UiProgress(), UiLogger(PackLogs), token, _queue), PathMemory.Pack);

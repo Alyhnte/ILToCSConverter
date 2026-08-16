@@ -13,6 +13,7 @@ public sealed class StrongNameKey
     public required string SnkPath { get; init; }
     public required byte[] PublicBlob { get; init; }
     public required string Token { get; init; }
+    public bool HasPrivateKey { get; init; }
 
     public string FormattedPublicKeyHex => FormatHex(PublicBlob, bytesPerLine: 16);
     public string FormattedTokenHex => FormatHex(Convert.FromHexString(Token), bytesPerLine: 8);
@@ -23,13 +24,14 @@ public sealed class StrongNameKey
             throw new FileNotFoundException("Anahtar dosyası bulunamadı.", snkPath);
 
         byte[] snkBytes = File.ReadAllBytes(snkPath);
-        byte[] fullPublicBlob = ExtractFullEcma335Blob(snkBytes);
+        (byte[] fullPublicBlob, bool hasPrivate) = ExtractFullEcma335Blob(snkBytes);
 
         return new StrongNameKey
         {
             SnkPath = Path.GetFullPath(snkPath),
             PublicBlob = fullPublicBlob,
-            Token = ComputeToken(fullPublicBlob)
+            Token = ComputeToken(fullPublicBlob),
+            HasPrivateKey = hasPrivate
         };
     }
 
@@ -46,22 +48,31 @@ public sealed class StrongNameKey
         return Load(snkPath);
     }
 
-    private static byte[] ExtractFullEcma335Blob(byte[] snkBytes)
+    private static (byte[] Blob, bool HasPrivateKey) ExtractFullEcma335Blob(byte[] snkBytes)
     {
         if (snkBytes.Length >= 16 && BitConverter.ToUInt32(snkBytes, 0) == CALG_RSA_SIGN)
-            return snkBytes;
+            return (snkBytes, false);
 
-        using var rsa = new RSACryptoServiceProvider();
-        rsa.ImportCspBlob(snkBytes);
-        byte[] rawCspPublicBlob = rsa.ExportCspBlob(includePrivateParameters: false);
+        try
+        {
+            using var rsa = new RSACryptoServiceProvider();
+            rsa.ImportCspBlob(snkBytes);
 
-        byte[] ecmaBlob = new byte[12 + rawCspPublicBlob.Length];
-        BitConverter.GetBytes(CALG_RSA_SIGN).CopyTo(ecmaBlob, 0);
-        BitConverter.GetBytes(CALG_SHA1).CopyTo(ecmaBlob, 4);
-        BitConverter.GetBytes(rawCspPublicBlob.Length).CopyTo(ecmaBlob, 8);
-        Buffer.BlockCopy(rawCspPublicBlob, 0, ecmaBlob, 12, rawCspPublicBlob.Length);
+            bool hasPrivate = !rsa.PublicOnly;
+            byte[] rawCspPublicBlob = rsa.ExportCspBlob(includePrivateParameters: false);
 
-        return ecmaBlob;
+            byte[] ecmaBlob = new byte[12 + rawCspPublicBlob.Length];
+            BitConverter.GetBytes(CALG_RSA_SIGN).CopyTo(ecmaBlob, 0);
+            BitConverter.GetBytes(CALG_SHA1).CopyTo(ecmaBlob, 4);
+            BitConverter.GetBytes(rawCspPublicBlob.Length).CopyTo(ecmaBlob, 8);
+            Buffer.BlockCopy(rawCspPublicBlob, 0, ecmaBlob, 12, rawCspPublicBlob.Length);
+
+            return (ecmaBlob, hasPrivate);
+        }
+        catch
+        {
+            return (snkBytes, false);
+        }
     }
 
     public static string ComputeToken(byte[] fullPublicKeyBlob)

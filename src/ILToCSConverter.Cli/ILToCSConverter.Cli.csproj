@@ -12,8 +12,12 @@
     <ToolCommandName>il2cs</ToolCommandName>
     <PackageId>il2cs</PackageId>
     <IsPackable>true</IsPackable>
-    <PackageDescription>IL, DLL ve EXE dosyalarını C# projesine çevirir; Düzün ile DLL'yi IL'ye ayırır.</PackageDescription>
-    <PackageTags>ilspy;decompiler;ildasm;ilasm;csharp</PackageTags>
+    <PackageDescription>IL, DLL and EXE to C# projects; Düzün (DLL→IL); IL→DLL with your own SNK. UI: Turkish, English, Russian.</PackageDescription>
+    <PackageTags>ilspy;decompiler;ildasm;ilasm;csharp;strong-name</PackageTags>
+    <PackageProjectUrl>https://github.com/Alyhnte/ILToCSConverter</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Alyhnte/ILToCSConverter</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
   <ItemGroup>
@@ -30,4 +34,7 @@
     </None>
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 </Project>

@@ -22,8 +22,16 @@ Bu belge, uygulamanın nerede durduğunu ve sıradaki adımları gösterir.
 - `dotnet tool` olarak yayın (`il2cs`)
 - **Düzün:** DLL/EXE → IL (`ildasm`, UTF-8)
 
+## 1.3 (tamamlandı)
+
+- Arayüz dilleri: Türkçe, English, Русский
+- Ayarlar: GitHub hesabı ([Alyhnte](https://github.com/Alyhnte)) ve güncelleme kontrolü
+- Strong Name paketleme: imza kaldırma, token haritası, tüm extern token eşitleme
+- CLI `pack` seçenekleri (`--strip-signature`, `--replace-all-tokens`, `--token-map`)
+
 ## Sonra
 
 - Eski Windows PDB (DIA) desteği
 - Çoklu dosya kuyruğunu kaydet / geri yükle
 - `dotnet tool` nuget.org yayını
+- GitHub Release varlıkları (win-x64 tek exe)

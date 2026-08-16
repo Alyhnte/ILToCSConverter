@@ -130,5 +130,10 @@
             <Setter Property="Foreground" Value="{DynamicResource Danger}" />
             <Setter Property="BorderBrush" Value="#FECACA" />
         </Style>
+
+        <Style TargetType="Hyperlink">
+            <Setter Property="Foreground" Value="{DynamicResource Accent}" />
+            <Setter Property="TextDecorations" Value="Underline" />
+        </Style>
     </Application.Resources>
 </Application>

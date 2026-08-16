@@ -5,6 +5,7 @@ using ILToCSConverter.Core.Ilasm;
 using ILToCSConverter.Core.Ildasm;
 using ILToCSConverter.Core.Packing;
 using ILToCSConverter.Core.Settings;
+using ILToCSConverter.Core.Signing;
 
 namespace ILToCSConverter.Cli;
 
@@ -123,26 +124,50 @@ internal static class Program
         };
         var packSnk = new Option<string?>("--snk") { Description = "Kendi .snk anahtarınız" };
         var packGen = new Option<bool>("--generate-snk") { Description = "Yoksa yeni .snk üret" };
+        var packStrip = new Option<bool>("--strip-signature")
+        {
+            Description = "Strong Name imzasını ve tüm publickeytoken referanslarını kaldır"
+        };
+        var packReplaceAll = new Option<bool>("--replace-all-tokens")
+        {
+            Description = "Tüm .assembly extern token'larını yeni anahtara eşitle"
+        };
+        var packTokenMap = new Option<string[]>("--token-map")
+        {
+            Description = "Eski=yeni publickeytoken eşlemesi (tekrarlanabilir). Örnek: b77a5c561934e089=aabbccddeeff0011",
+            DefaultValueFactory = _ => []
+        };
         var packIlasm = new Option<string?>("--ilasm") { Description = "ilasm.exe yolu" };
         var packRecursive = CreateRecursiveOption();
         var packParallel = CreateParallelOption();
-        var pack = new Command("pack", "Kendi IL dosyanızı DLL'e derler ve kendi .snk anahtarınızla imzalar")
+        var pack = new Command("pack", "Kendi IL dosyanızı DLL'e derler; kendi .snk anahtarınızla imzalar veya imzayı kaldırır")
         {
-            packIn, packOut, packSnk, packGen, packIlasm, packRecursive, packParallel
+            packIn, packOut, packSnk, packGen, packStrip, packReplaceAll, packTokenMap, packIlasm, packRecursive, packParallel
         };
         pack.SetAction(parseResult =>
         {
-            var options = new PackOptions
+            try
             {
-                InputPath = parseResult.GetRequiredValue(packIn),
-                OutputPath = parseResult.GetRequiredValue(packOut),
-                SnkPath = parseResult.GetValue(packSnk),
-                GenerateSnkIfMissing = parseResult.GetValue(packGen),
-                IlasmPath = parseResult.GetValue(packIlasm),
-                Recursive = parseResult.GetValue(packRecursive),
-                MaxParallelism = parseResult.GetValue(packParallel)
-            };
-            return RunPack(options);
+                var options = new PackOptions
+                {
+                    InputPath = parseResult.GetRequiredValue(packIn),
+                    OutputPath = parseResult.GetRequiredValue(packOut),
+                    SnkPath = parseResult.GetValue(packSnk),
+                    GenerateSnkIfMissing = parseResult.GetValue(packGen),
+                    StripSignature = parseResult.GetValue(packStrip),
+                    ReplaceAllExternTokens = parseResult.GetValue(packReplaceAll),
+                    TokenMap = TokenMapParser.Parse(parseResult.GetValue(packTokenMap)),
+                    IlasmPath = parseResult.GetValue(packIlasm),
+                    Recursive = parseResult.GetValue(packRecursive),
+                    MaxParallelism = parseResult.GetValue(packParallel)
+                };
+                return RunPack(options);
+            }
+            catch (FormatException ex)
+            {
+                Console.Error.WriteLine(ex.Message);
+                return 1;
+            }
         });
         root.Subcommands.Add(pack);
 
@@ -166,6 +191,9 @@ internal static class Program
         Description = "Aynı anda işlenecek dosya sayısı (0 = CPU sayısı)",
         DefaultValueFactory = _ => 0
     };
+
+    private static bool IsYes(string? value) =>
+        value is not null && value.Trim().StartsWith("e", StringComparison.OrdinalIgnoreCase);
 
     private static int RunInteractive()
     {
@@ -202,15 +230,41 @@ internal static class Program
                 return 1;
             }
 
+            Console.Write("Strong Name imzasını kaldır? [e/H]: ");
+            bool strip = IsYes(Console.ReadLine());
+            if (strip)
+            {
+                return RunPack(new PackOptions
+                {
+                    InputPath = input,
+                    OutputPath = output,
+                    StripSignature = true
+                });
+            }
+
             Console.Write(".snk yolu (boşsa yeni üretilir): ");
             string? snk = Console.ReadLine()?.Trim(' ', '"');
-            return RunPack(new PackOptions
+            Console.Write("Tüm extern token'ları yeni anahtara eşitle? [e/H]: ");
+            bool replaceAll = IsYes(Console.ReadLine());
+            Console.Write("Token haritası (eski=yeni, boş geç): ");
+            string? tokenMapText = Console.ReadLine();
+            try
             {
-                InputPath = input,
-                OutputPath = output,
-                SnkPath = string.IsNullOrWhiteSpace(snk) ? null : snk,
-                GenerateSnkIfMissing = string.IsNullOrWhiteSpace(snk)
-            });
+                return RunPack(new PackOptions
+                {
+                    InputPath = input,
+                    OutputPath = output,
+                    SnkPath = string.IsNullOrWhiteSpace(snk) ? null : snk,
+                    GenerateSnkIfMissing = string.IsNullOrWhiteSpace(snk),
+                    ReplaceAllExternTokens = replaceAll,
+                    TokenMap = TokenMapParser.Parse(tokenMapText)
+                });
+            }
+            catch (FormatException ex)
+            {
+                Console.Error.WriteLine(ex.Message);
+                return 1;
+            }
         }
 
         if (string.IsNullOrWhiteSpace(output))
