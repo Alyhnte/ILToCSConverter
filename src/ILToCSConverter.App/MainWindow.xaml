@@ -418,6 +418,7 @@
                                         <Button Style="{StaticResource PrimaryButton}" Content="{Binding Ui[CheckUpdates]}" Command="{Binding CheckUpdatesCommand}"
                                                 IsEnabled="{Binding UpdateBusy, Converter={StaticResource InverseBool}}" />
                                         <Button Style="{StaticResource GhostButton}" Content="{Binding Ui[OpenReleases]}" Margin="8,0,0,0" Command="{Binding OpenReleasesCommand}" />
+                                        <Button Style="{StaticResource PrimaryButton}" Content="{Binding Ui[DownloadLatest]}" Margin="8,0,0,0" Command="{Binding OpenLatestDownloadCommand}" />
                                     </StackPanel>
                                 </StackPanel>
                             </Border>

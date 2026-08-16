@@ -29,10 +29,10 @@ Bu belge, uygulamanın nerede durduğunu ve sıradaki adımları gösterir.
 - Strong Name paketleme: imza kaldırma, token haritası, tüm extern token eşitleme
 - CLI `pack` seçenekleri (`--strip-signature`, `--replace-all-tokens`, `--token-map`)
 - Patreon: [patreon.com/cw/Alyhnte](https://www.patreon.com/cw/Alyhnte)
+- GitHub Release: Windows x64 GUI/CLI zip ve exe ([indir](https://github.com/Alyhnte/ILToCSConverter/releases/latest))
 
 ## Sonra
 
 - Eski Windows PDB (DIA) desteği
 - Çoklu dosya kuyruğunu kaydet / geri yükle
 - `dotnet tool` nuget.org yayını
-- GitHub Release varlıkları (win-x64 tek exe)

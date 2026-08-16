@@ -6,6 +6,15 @@
 
 Turns IL, DLL, and EXE files into readable C# projects. **Düzün** disassembles a DLL/EXE to UTF-8 IL. **IL → DLL** assembles your own `.il` files and signs them with **your own** `.snk` key.
 
+### Download / İndir
+
+Hazır Windows paketi (kurulum yok, .NET gömülü): **[son sürümü indir](https://github.com/Alyhnte/ILToCSConverter/releases/latest)**
+
+- `ILToCSConverter-1.3.0-win-x64.zip` — arayüz (`ILToCSConverter.exe`)
+- `ILToCS-1.3.0-win-x64.zip` — komut satırı (`ILToCS.exe`)
+
+Ready-to-run Windows x64 (no install, .NET bundled): **[download latest release](https://github.com/Alyhnte/ILToCSConverter/releases/latest)**
+
 ---
 
 ## English
@@ -50,12 +59,13 @@ il2cs pack --in .\Game.il --out .\dlls --snk .\mine.snk
 
 ### Publish (single exe)
 
+Prefer the GitHub Release zip above. To build locally on Windows:
+
 ```powershell
-dotnet publish src/ILToCSConverter.App -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o artifacts/app
-dotnet publish src/ILToCSConverter.Cli -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o artifacts/cli
+pwsh -File scripts/publish-windows.ps1
 ```
 
-The app exe is `artifacts/app/ILToCSConverter.exe`.
+Packages land in `artifacts/dist/`. Tag `v1.3.0` (or run **Actions → Release Windows packages**) publishes the same files to [Releases](https://github.com/Alyhnte/ILToCSConverter/releases/latest).
 
 ### Tests
 
@@ -120,12 +130,13 @@ il2cs pack --in .\Game.il --out .\dlls --snk .\mine.snk
 
 ### Yayın (tek exe)
 
+Hazır indirme: [son sürüm](https://github.com/Alyhnte/ILToCSConverter/releases/latest). Windows’ta yerelde paketlemek için:
+
 ```powershell
-dotnet publish src/ILToCSConverter.App -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o artifacts/app
-dotnet publish src/ILToCSConverter.Cli -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o artifacts/cli
+pwsh -File scripts/publish-windows.ps1
 ```
 
-Uygulama: `artifacts/app/ILToCSConverter.exe`.
+Dosyalar `artifacts/dist/` altına yazılır. `v1.3.0` etiketi (veya **Actions → Release Windows packages**) aynı paketleri [Releases](https://github.com/Alyhnte/ILToCSConverter/releases/latest) sayfasına yükler.
 
 ### Test
 

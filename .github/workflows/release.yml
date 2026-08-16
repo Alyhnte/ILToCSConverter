@@ -1,0 +1,103 @@
+name: Release Windows packages
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Publish GUI (win-x64, single file)
+        run: >
+          dotnet publish src/ILToCSConverter.App/ILToCSConverter.App.csproj
+          -c Release -r win-x64 --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:EnableCompressionInSingleFile=true
+          -p:DebugType=none
+          -o artifacts/gui
+
+      - name: Publish CLI (win-x64, single file)
+        run: >
+          dotnet publish src/ILToCSConverter.Cli/ILToCSConverter.Cli.csproj
+          -c Release -r win-x64 --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:EnableCompressionInSingleFile=true
+          -p:DebugType=none
+          -o artifacts/cli
+
+      - name: Zip download packages
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $ver = if ($env:GITHUB_REF_TYPE -eq "tag") { $env:GITHUB_REF_NAME } else { "v1.3.0" }
+          $verNum = $ver.TrimStart("vV")
+          New-Item -ItemType Directory -Force -Path artifacts/dist | Out-Null
+
+          $guiReadme = @"
+          IL → C# Converter $verNum (Windows x64)
+          Author: Alyhnte
+          https://github.com/Alyhnte/ILToCSConverter
+
+          Run ILToCSConverter.exe (self-contained; .NET is bundled).
+          Source / updates: https://github.com/Alyhnte/ILToCSConverter/releases/latest
+          Patreon: https://www.patreon.com/cw/Alyhnte
+          "@
+          Set-Content -Path artifacts/gui/README.txt -Value $guiReadme.Trim() -Encoding UTF8
+
+          $cliReadme = @"
+          ILToCS CLI $verNum (Windows x64)
+          Author: Alyhnte
+          https://github.com/Alyhnte/ILToCSConverter
+
+          Run ILToCS.exe --help
+          Example: ILToCS.exe --in .\bin --out .\cs --recursive
+          "@
+          Set-Content -Path artifacts/cli/README.txt -Value $cliReadme.Trim() -Encoding UTF8
+
+          Compress-Archive -Path artifacts/gui/* -DestinationPath "artifacts/dist/ILToCSConverter-$verNum-win-x64.zip" -Force
+          Compress-Archive -Path artifacts/cli/* -DestinationPath "artifacts/dist/ILToCS-$verNum-win-x64.zip" -Force
+          Copy-Item artifacts/gui/ILToCSConverter.exe "artifacts/dist/ILToCSConverter-$verNum-win-x64.exe"
+          Copy-Item artifacts/cli/ILToCS.exe "artifacts/dist/ILToCS-$verNum-win-x64.exe"
+          echo "VERSION=$verNum" >> $env:GITHUB_ENV
+          echo "TAG=$ver" >> $env:GITHUB_ENV
+
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Continue"
+          $tag = $env:TAG
+          if ($env:GITHUB_REF_TYPE -ne "tag") {
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag $tag
+            git push origin "refs/tags/$tag"
+          }
+          $ErrorActionPreference = "Stop"
+          $view = gh release view $tag --repo $env:GITHUB_REPOSITORY 2>&1
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $tag artifacts/dist/* --clobber --repo $env:GITHUB_REPOSITORY
+          } else {
+            gh release create $tag artifacts/dist/* `
+              --title "IL → C# Converter $tag" `
+              --notes-file CHANGELOG.md `
+              --latest `
+              --repo $env:GITHUB_REPOSITORY
+          }

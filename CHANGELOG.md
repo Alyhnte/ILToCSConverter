@@ -10,6 +10,7 @@
 - Strong Name: detect private vs public SNK, strip signatures, token map, replace-all extern tokens
 - CLI `pack`: `--strip-signature`, `--replace-all-tokens`, `--token-map old=new`
 - Patreon donate: [patreon.com/cw/Alyhnte](https://www.patreon.com/cw/Alyhnte) (`.github/FUNDING.yml`)
+- Windows x64 download packages (GUI + CLI zip/exe) via GitHub Releases
 
 ### Türkçe
 
@@ -19,6 +20,7 @@
 - Strong Name: özel/genel anahtar ayrımı, imza kaldırma, token haritası, tüm extern token’ları eşitleme
 - CLI `pack`: `--strip-signature`, `--replace-all-tokens`, `--token-map eski=yeni`
 - Patreon bağış: [patreon.com/cw/Alyhnte](https://www.patreon.com/cw/Alyhnte) (`.github/FUNDING.yml`)
+- Windows x64 indirme paketleri (arayüz + CLI zip/exe) GitHub Releases üzerinden
 
 ## 1.2.0 — 2026-08-15
 

@@ -131,6 +131,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         OpenGitHubRepoCommand = new RelayCommand(() => OpenUrl(ProductInfo.GitHubRepoUrl));
         OpenPatreonCommand = new RelayCommand(() => OpenUrl(ProductInfo.PatreonUrl));
         OpenReleasesCommand = new RelayCommand(() => OpenUrl(_lastUpdate?.ReleaseUrl ?? ProductInfo.GitHubReleasesUrl));
+        OpenLatestDownloadCommand = new RelayCommand(() => OpenUrl(ProductInfo.GitHubReleasesLatestUrl));
 
         ApplyLanguage();
     }
@@ -341,6 +342,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public RelayCommand OpenGitHubRepoCommand { get; }
     public RelayCommand OpenPatreonCommand { get; }
     public RelayCommand OpenReleasesCommand { get; }
+    public RelayCommand OpenLatestDownloadCommand { get; }
 
     public void ApplyInitialTheme() => ThemeManager.Apply(IsDarkTheme);
 
