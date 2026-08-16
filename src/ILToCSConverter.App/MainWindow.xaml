@@ -393,11 +393,17 @@
                                                     <Run Text="{Binding GitHubProfileUrl, Mode=OneWay}" />
                                                 </Hyperlink>
                                             </TextBlock>
+                                            <TextBlock Margin="0,4,0,0">
+                                                <Hyperlink Command="{Binding OpenPatreonCommand}">
+                                                    <Run Text="{Binding PatreonUrl, Mode=OneWay}" />
+                                                </Hyperlink>
+                                            </TextBlock>
                                         </StackPanel>
                                     </Grid>
                                     <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
                                         <Button Style="{StaticResource PrimaryButton}" Content="{Binding Ui[OpenProfile]}" Command="{Binding OpenGitHubProfileCommand}" />
                                         <Button Style="{StaticResource GhostButton}" Content="{Binding Ui[OpenRepo]}" Margin="8,0,0,0" Command="{Binding OpenGitHubRepoCommand}" />
+                                        <Button Style="{StaticResource GhostButton}" Content="{Binding Ui[OpenPatreon]}" Margin="8,0,0,0" Command="{Binding OpenPatreonCommand}" />
                                     </StackPanel>
                                 </StackPanel>
                             </Border>

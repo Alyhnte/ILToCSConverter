@@ -2,7 +2,7 @@
 
 [English](#english) · [Türkçe](#türkçe)
 
-**v1.3.0** · UI: Türkçe · English · Русский · GitHub: [Alyhnte](https://github.com/Alyhnte) · Repo: [Alyhnte/ILToCSConverter](https://github.com/Alyhnte/ILToCSConverter)
+**v1.3.0** · UI: Türkçe · English · Русский · GitHub: [Alyhnte](https://github.com/Alyhnte) · Repo: [Alyhnte/ILToCSConverter](https://github.com/Alyhnte/ILToCSConverter) · Patreon: [Alyhnte](https://www.patreon.com/cw/Alyhnte)
 
 Turns IL, DLL, and EXE files into readable C# projects. **Düzün** disassembles a DLL/EXE to UTF-8 IL. **IL → DLL** assembles your own `.il` files and signs them with **your own** `.snk` key.
 
@@ -64,6 +64,11 @@ dotnet test
 ```
 
 Roadmap: [ROADMAP.md](ROADMAP.md) · Changelog: [CHANGELOG.md](CHANGELOG.md)
+
+### Support / Donate
+
+- Patreon: [patreon.com/cw/Alyhnte](https://www.patreon.com/cw/Alyhnte)
+- GitHub: [Alyhnte](https://github.com/Alyhnte)
 
 ### Credits
 
@@ -129,6 +134,11 @@ dotnet test
 ```
 
 Yol haritası: [ROADMAP.md](ROADMAP.md) · Değişiklikler: [CHANGELOG.md](CHANGELOG.md)
+
+### Destek / Bağış
+
+- Patreon: [patreon.com/cw/Alyhnte](https://www.patreon.com/cw/Alyhnte)
+- GitHub: [Alyhnte](https://github.com/Alyhnte)
 
 ### Emeği geçenler
 

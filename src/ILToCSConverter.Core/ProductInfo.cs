@@ -12,4 +12,5 @@ public static class ProductInfo
     public const string GitHubReleasesUrl = "https://github.com/Alyhnte/ILToCSConverter/releases";
     public const string GitHubAvatarUrl = "https://github.com/Alyhnte.png?size=128";
     public const string GitHubLatestReleaseApi = "https://api.github.com/repos/Alyhnte/ILToCSConverter/releases/latest";
+    public const string PatreonUrl = "https://www.patreon.com/cw/Alyhnte";
 }

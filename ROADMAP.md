@@ -28,6 +28,7 @@ Bu belge, uygulamanın nerede durduğunu ve sıradaki adımları gösterir.
 - Ayarlar: GitHub hesabı ([Alyhnte](https://github.com/Alyhnte)) ve güncelleme kontrolü
 - Strong Name paketleme: imza kaldırma, token haritası, tüm extern token eşitleme
 - CLI `pack` seçenekleri (`--strip-signature`, `--replace-all-tokens`, `--token-map`)
+- Patreon: [patreon.com/cw/Alyhnte](https://www.patreon.com/cw/Alyhnte)
 
 ## Sonra
 

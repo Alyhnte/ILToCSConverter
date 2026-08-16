@@ -129,6 +129,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         CheckUpdatesCommand = new RelayCommand(CheckUpdatesAsync, () => !UpdateBusy);
         OpenGitHubProfileCommand = new RelayCommand(() => OpenUrl(ProductInfo.GitHubProfileUrl));
         OpenGitHubRepoCommand = new RelayCommand(() => OpenUrl(ProductInfo.GitHubRepoUrl));
+        OpenPatreonCommand = new RelayCommand(() => OpenUrl(ProductInfo.PatreonUrl));
         OpenReleasesCommand = new RelayCommand(() => OpenUrl(_lastUpdate?.ReleaseUrl ?? ProductInfo.GitHubReleasesUrl));
 
         ApplyLanguage();
@@ -162,6 +163,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public string GitHubProfileUrl => ProductInfo.GitHubProfileUrl;
     public string GitHubRepoUrl => ProductInfo.GitHubRepoUrl;
     public string GitHubAvatarUrl => ProductInfo.GitHubAvatarUrl;
+    public string PatreonUrl => ProductInfo.PatreonUrl;
 
     public string UiLanguage
     {
@@ -337,6 +339,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public RelayCommand CheckUpdatesCommand { get; }
     public RelayCommand OpenGitHubProfileCommand { get; }
     public RelayCommand OpenGitHubRepoCommand { get; }
+    public RelayCommand OpenPatreonCommand { get; }
     public RelayCommand OpenReleasesCommand { get; }
 
     public void ApplyInitialTheme() => ThemeManager.Apply(IsDarkTheme);

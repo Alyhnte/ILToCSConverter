@@ -198,6 +198,8 @@ internal static class Program
     private static int RunInteractive()
     {
         Console.WriteLine($"{ProductInfo.Name} {ProductInfo.Version}");
+        Console.WriteLine($"GitHub: {ProductInfo.GitHubRepoUrl}");
+        Console.WriteLine($"Patreon: {ProductInfo.PatreonUrl}");
         Console.WriteLine("1) C#'a çevir    2) Düzün (DLL → IL)    3) IL → DLL (kendi anahtar)");
         Console.Write("Seçim [1]: ");
         string? choice = Console.ReadLine();
